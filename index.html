@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Оцінка якості JS-коду</title>
+  <link href="https://fonts.googleapis.com/css?family=JetBrains Mono" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <span class="logo-tag">&#60;/&#62;</span>
+      <h1>Оцінка якості JS-коду</h1>
+      <p class="subtitle">Порівняння якості різних розв'язків</p>
+      <button class="theme-toggle" id="theme-toggle" title="Змінити тему">☀️</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="editors-section">
+      <div id="editors-container">
+      </div>
+      <button id="add-btn" class="add-btn" title="Додати розв'язок">
+        <span class="plus-icon">+</span>
+        <span>Додати розв'язок</span>
+      </button>
+    </section>
+
+    <div class="analyze-row">
+      <button id="analyze-btn" class="analyze-btn">
+        <span class="btn-text">Аналізувати</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </div>
+
+    <section class="results-section" id="results-section">
+      <h2 class="results-title">Таблиця результатів <span class="tag">(рейтинг)</span></h2>
+      <div class="table-wrapper">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Рядки</th>
+              <th>Глибина</th>
+              <th>Змінні</th>
+              <th>Функції</th>
+              <th>Цикли</th>
+              <th>Сер. ім'я</th>
+              <th>Повтори</th>
+              <th class="score-col">Оцінка</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr class="placeholder-row">
+              <td colspan="9">Натисніть «Аналізувати» для отримання результатів</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/utils.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/metrics.js"></script>
+  <script src="js/linter.js"></script>
+</body>
+</html>
