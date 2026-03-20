@@ -176,7 +176,7 @@ main {
 
 .code-textarea {
   width: 100%;
-  min-height: 200px;
+  min-height: 202px;
   padding: 1.2rem;
   background: transparent;
   color: var(--text);
@@ -322,7 +322,7 @@ thead tr {
 }
 
 th {
-  padding: 0.8rem 1rem;
+  padding: 0.8rem 0.9rem;
   text-align: center;
   color: var(--text-dim);
   font-family: var(--font-ui);
