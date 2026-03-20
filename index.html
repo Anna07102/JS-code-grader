@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Оцінка якості JS-коду</title>
-  <link href="https://fonts.googleapis.com/css?family=JetBrains Mono" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=JetBrains+Mono" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -49,12 +49,13 @@
               <th>Цикли</th>
               <th>Сер. ім'я</th>
               <th>Повтори</th>
+              <th title="Максимальна кількість змінних у зоні видимості (клік = деталі)">Пам'ять ⊞</th>
               <th class="score-col">Оцінка</th>
             </tr>
           </thead>
           <tbody id="results-body">
             <tr class="placeholder-row">
-              <td colspan="9">Натисніть «Аналізувати» для отримання результатів</td>
+              <td colspan="10">Натисніть «Аналізувати» для отримання результатів</td>
             </tr>
           </tbody>
         </table>
@@ -62,8 +63,19 @@
     </section>
   </main>
 
+  <!-- acorn AST parser (browser build) -->
+  <script src="https://cdn.jsdelivr.net/npm/acorn@8/dist/acorn.js"></script>
+  <!-- acorn-walk (browser build) -->
+  <script src="https://cdn.jsdelivr.net/npm/acorn-walk@8/dist/walk.js"></script>
+  <script>
+    if (typeof acornWalk === "undefined" && typeof walk !== "undefined") {
+      window.acornWalk = walk;
+    }
+  </script>
+
   <script src="js/utils.js"></script>
   <script src="js/parser.js"></script>
+  <script src="js/memory.js"></script>
   <script src="js/metrics.js"></script>
   <script src="js/linter.js"></script>
 </body>

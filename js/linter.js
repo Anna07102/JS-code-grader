@@ -6,8 +6,8 @@ function createEditorCard() {
 
   const card = document.createElement("div");
   card.className = "editor-card";
-  card.dataset.id = num;
-  card.id = `editor-${num}`;
+  card.dataset.num = num;
+  card.id = `editor-card-${num}`;
 
   card.innerHTML = `
     <div class="editor-header">
@@ -62,15 +62,80 @@ function getRankClass(rank) {
   return "rank-other";
 }
 
+function showMemoryPopup(memoryData, solutionNum, codeLines) {
+  const existing = document.getElementById("memory-popup");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "memory-popup";
+  overlay.className = "memory-overlay";
+
+  const maxCount = memoryData.reduce((m, r) => Math.max(m, r.count), 0);
+
+  const rows = memoryData.map(({ lineNum, lineText, count }) => {
+    const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+    const cls = count >= maxCount * 0.8 ? "mem-high" :
+                count >= maxCount * 0.5 ? "mem-mid" : "mem-low";
+    return `
+      <tr class="${count === maxCount ? "mem-peak-row" : ""}">
+        <td class="mem-lineno">${lineNum}</td>
+        <td class="mem-code"><code>${escapeHtml(lineText)}</code></td>
+        <td class="mem-count ${cls}">
+          <span class="mem-num">${count}</span>
+          <div class="mem-bar-wrap">
+            <div class="mem-bar-fill ${cls}" style="width:${pct}%"></div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="memory-dialog">
+      <div class="memory-dialog-header">
+        <span class="memory-dialog-title">Навантаження на пам'ять — Розв'язок #${solutionNum}</span>
+        <button class="memory-close-btn" id="memory-close">✕</button>
+      </div>
+      <div class="memory-dialog-sub">Кількість змінних у зоні видимості на кожному рядку</div>
+      <div class="memory-table-wrap">
+        <table class="memory-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Рядок коду</th>
+              <th>Змінних у пам'яті</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("memory-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+  setTimeout(() => {
+    const peak = overlay.querySelector(".mem-peak-row");
+    if (peak) peak.scrollIntoView({ block: "center" });
+  }, 50);
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function analyze() {
   const cards = document.querySelectorAll(".editor-card");
   const results = [];
 
-  cards.forEach((card, idx) => {
+  cards.forEach((card) => {
     const code = card.querySelector("textarea").value.trim();
     if (!code) return;
+    const solutionNum = parseInt(card.dataset.num, 10);
     const m = analyzeCode(code);
-    results.push({ solutionNum: idx + 1, id: card.dataset.id, ...m });
+    results.push({ solutionNum, ...m });
   });
 
   if (results.length === 0) {
@@ -88,14 +153,20 @@ function analyze() {
     const cls  = getScoreClass(r.score);
     const tr   = document.createElement("tr");
 
+    const memMax = r.memory ? r.memory.max : "—";
+
     tr.innerHTML = `
-      <td><a class="rank-badge ${getRankClass(rank)}" href="#editor-${r.solutionNum}" title="Перейти до розв'язку">${r.solutionNum}</a></td>      <td>${r.lines}</td>
+      <td><a class="rank-badge ${getRankClass(rank)}" href="#editor-card-${r.solutionNum}" title="Перейти до розв'язку">${r.solutionNum}</a></td>
+      <td>${r.lines}</td>
       <td>${r.depth}</td>
       <td>${r.vars}</td>
       <td>${r.funcs}</td>
       <td>${r.loops}</td>
       <td>${r.avgName}</td>
       <td>${r.repeats}</td>
+      <td class="mem-cell" data-solution="${r.solutionNum}" title="Натисніть для деталей">
+        <span class="mem-badge">${memMax} <span class="mem-icon">⊞</span></span>
+      </td>
       <td>
         <div class="score-bar-wrap">
           <span class="score-cell ${cls.text}">${r.score}</span>
@@ -105,6 +176,14 @@ function analyze() {
         </div>
       </td>
     `;
+
+    const memCell = tr.querySelector(".mem-cell");
+    if (r.memory && r.memory.perLine) {
+      memCell.addEventListener("click", () => {
+        showMemoryPopup(r.memory.perLine, r.solutionNum);
+      });
+    }
+
     tbody.appendChild(tr);
   });
 
