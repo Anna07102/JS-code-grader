@@ -1,4 +1,5 @@
 let editorCount = 0;
+let originalOrder = [];
 
 function createEditorCard() {
   editorCount++;
@@ -46,7 +47,9 @@ function createEditorCard() {
 }
 
 function addEditor() {
-  document.getElementById("editors-container").appendChild(createEditorCard());
+  const container = document.getElementById("editors-container");
+  container.appendChild(createEditorCard());
+  originalOrder = Array.from(container.querySelectorAll(".editor-card")).map(c => c.dataset.num);
 }
 
 function getScoreClass(score) {
@@ -62,7 +65,7 @@ function getRankClass(rank) {
   return "rank-other";
 }
 
-function showMemoryPopup(memoryData, solutionNum, codeLines) {
+function showMemoryPopup(memoryData, solutionNum) {
   const existing = document.getElementById("memory-popup");
   if (existing) existing.remove();
 
@@ -75,7 +78,7 @@ function showMemoryPopup(memoryData, solutionNum, codeLines) {
   const rows = memoryData.map(({ lineNum, lineText, count }) => {
     const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
     const cls = count >= maxCount * 0.8 ? "mem-high" :
-                count >= maxCount * 0.5 ? "mem-mid" : "mem-low";
+        count >= maxCount * 0.5 ? "mem-mid" : "mem-low";
     return `
       <tr class="${count === maxCount ? "mem-peak-row" : ""}">
         <td class="mem-lineno">${lineNum}</td>
@@ -122,20 +125,154 @@ function showMemoryPopup(memoryData, solutionNum, codeLines) {
   }, 50);
 }
 
+function showMetricsPopup() {
+  const existing = document.getElementById("metrics-popup");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "metrics-popup";
+  overlay.className = "memory-overlay";
+
+  const rows = currentMetrics.map((m, i) => {
+    const def = DEFAULT_METRICS[i];
+    const isRange = m.direction === "range";
+    return `
+      <tr data-idx="${i}">
+        <td class="mconf-num">${i + 1}</td>
+        <td class="mconf-label">${m.label}</td>
+        <td class="mconf-dir-cell">
+          <div class="mconf-dir-wrap">
+            <div class="mconf-top-line">
+              <select class="mconf-dir" data-idx="${i}">
+                <option value="less"  ${m.direction === "less"  ? "selected" : ""}>краще менше</option>
+                <option value="more"  ${m.direction === "more"  ? "selected" : ""}>краще більше</option>
+                <option value="range" ${m.direction === "range" ? "selected" : ""}>інтервал</option>
+              </select>
+              <span class="mconf-range-wrap" style="display:${isRange ? "inline-flex" : "none"}">
+                <span class="mconf-range-label">від</span>
+                <input class="mconf-range-input" type="number" data-field="min" data-idx="${i}" value="${m.min ?? ""}" placeholder="${def.min ?? ""}">
+                <span class="mconf-range-label">до</span>
+                <input class="mconf-range-input" type="number" data-field="max" data-idx="${i}" value="${m.max ?? ""}" placeholder="${def.max ?? ""}">
+              </span>
+            </div>
+            <div class="mconf-bottom-line">
+              <input class="mconf-weight" type="number" data-idx="${i}" value="${m.weight}" placeholder="${def.weight}" step="0.01" min="0" max="1">
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="memory-dialog metrics-dialog">
+      <div class="memory-dialog-header">
+        <span class="memory-dialog-title">Коригування метрик</span>
+        <button class="memory-close-btn" id="metrics-close">✕</button>
+      </div>
+      <div class="memory-dialog-sub">Сіре у полях — значення за замовчуванням</div>
+      <div class="memory-table-wrap">
+        <table class="memory-table metrics-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Метрика</th>
+              <th>Коефіцієнт</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="metrics-footer">
+        <button class="metrics-reset-btn" id="metrics-reset">Скинути до початкових</button>
+        <button class="metrics-apply-btn" id="metrics-apply">Застосувати</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll(".mconf-dir").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const idx = sel.dataset.idx;
+      const row = overlay.querySelector(`tr[data-idx="${idx}"]`);
+      const rangeWrap = row.querySelector(".mconf-range-wrap");
+      rangeWrap.style.display = sel.value === "range" ? "inline-flex" : "none";
+    });
+  });
+
+  document.getElementById("metrics-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+  document.getElementById("metrics-reset").addEventListener("click", () => {
+    currentMetrics = DEFAULT_METRICS.map(m => ({ ...m }));
+    overlay.remove();
+    showMetricsPopup();
+  });
+
+  document.getElementById("metrics-apply").addEventListener("click", () => {
+    overlay.querySelectorAll("tr[data-idx]").forEach(row => {
+      const i = parseInt(row.dataset.idx);
+      const dir = row.querySelector(".mconf-dir").value;
+      const weightVal = parseFloat(row.querySelector(".mconf-weight").value);
+      const minInput = row.querySelector('[data-field="min"]');
+      const maxInput = row.querySelector('[data-field="max"]');
+      const minVal = minInput && minInput.value !== "" ? parseFloat(minInput.value) : null;
+      const maxVal = maxInput && maxInput.value !== "" ? parseFloat(maxInput.value) : null;
+
+      currentMetrics[i] = {
+        ...currentMetrics[i],
+        direction: dir,
+        weight: isNaN(weightVal) ? currentMetrics[i].weight : weightVal,
+        min: minVal,
+        max: maxVal,
+        scoreFn: buildScoreFn(dir, minVal, maxVal),
+      };
+    });
+    overlay.remove();
+  });
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatTime(timing) {
+  if (!timing) return "—";
+  if (timing.error) return `<span class="time-error" title="${escapeHtml(timing.error)}">помилка</span>`;
+  if (timing.ms === null) return "—";
+  return `${timing.ms} мс`;
+}
+
+function reorderCards(sortedNums) {
+  const container = document.getElementById("editors-container");
+  sortedNums.forEach(num => {
+    const card = document.getElementById(`editor-card-${num}`);
+    if (card) container.appendChild(card);
+  });
+}
+
+function resetOrder() {
+  const container = document.getElementById("editors-container");
+  originalOrder.forEach(num => {
+    const card = document.getElementById(`editor-card-${num}`);
+    if (card) container.appendChild(card);
+  });
+  const resetBtn = document.getElementById("reset-order-btn");
+  if (resetBtn) resetBtn.style.display = "none";
 }
 
 function analyze() {
   const cards = document.querySelectorAll(".editor-card");
   const results = [];
 
+  originalOrder = Array.from(cards).map(c => c.dataset.num);
+
   cards.forEach((card) => {
     const code = card.querySelector("textarea").value.trim();
     if (!code) return;
     const solutionNum = parseInt(card.dataset.num, 10);
     const m = analyzeCode(code);
-    results.push({ solutionNum, ...m });
+    results.push({ solutionNum, code, ...m });
   });
 
   if (results.length === 0) {
@@ -144,6 +281,32 @@ function analyze() {
   }
 
   results.sort((a, b) => b.score - a.score);
+
+  const session = {
+    id: Date.now().toString(),
+    ts: Date.now(),
+    solutions: results.map((r, idx) => ({
+      num: r.solutionNum,
+      rank: idx + 1,
+      code: r.code,
+      score: r.score,
+      lines: r.lines,
+      depth: r.depth,
+      vars: r.vars,
+      funcs: r.funcs,
+      loops: r.loops,
+      avgName: r.avgName,
+      repeats: r.repeats,
+      memMax: r.memory ? r.memory.max : 0,
+      timeMs: r.time ? r.time.ms : null,
+    })),
+  };
+  dbAddSession(session);
+
+  reorderCards(results.map(r => r.solutionNum));
+
+  const resetBtn = document.getElementById("reset-order-btn");
+  if (resetBtn) resetBtn.style.display = "inline-flex";
 
   const tbody = document.getElementById("results-body");
   tbody.innerHTML = "";
@@ -167,6 +330,7 @@ function analyze() {
       <td class="mem-cell" data-solution="${r.solutionNum}" title="Натисніть для деталей">
         <span class="mem-badge">${memMax} <span class="mem-icon">⊞</span></span>
       </td>
+      <td class="time-cell">${formatTime(r.time)}</td>
       <td>
         <div class="score-bar-wrap">
           <span class="score-cell ${cls.text}">${r.score}</span>
@@ -188,7 +352,7 @@ function analyze() {
   });
 
   document.getElementById("results-section")
-    .scrollIntoView({ behavior: "smooth", block: "start" });
+      .scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -200,6 +364,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("add-btn").addEventListener("click", addEditor);
   document.getElementById("analyze-btn").addEventListener("click", analyze);
+  document.getElementById("metrics-btn").addEventListener("click", showMetricsPopup);
+
+  const resetOrderBtn = document.getElementById("reset-order-btn");
+  if (resetOrderBtn) resetOrderBtn.addEventListener("click", resetOrder);
+
+  const historyBtn = document.getElementById("history-btn");
+  if (historyBtn) historyBtn.addEventListener("click", showHistoryPopup);
 
   const themeBtn = document.getElementById("theme-toggle");
   themeBtn.addEventListener("click", () => {
