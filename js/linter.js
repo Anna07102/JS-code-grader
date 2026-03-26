@@ -253,10 +253,12 @@ function reorderCards(sortedNums) {
 
 function resetOrder() {
   const container = document.getElementById("editors-container");
+
   originalOrder.forEach(num => {
     const card = document.getElementById(`editor-card-${num}`);
     if (card) container.appendChild(card);
   });
+
   const resetBtn = document.getElementById("reset-order-btn");
   if (resetBtn) resetBtn.style.display = "none";
 }
@@ -316,6 +318,7 @@ function analyze() {
     const cls  = getScoreClass(r.score);
     const tr   = document.createElement("tr");
 
+    const formattedScore = r.score.toFixed(1);
     const memMax = r.memory ? r.memory.max : "—";
 
     tr.innerHTML = `
@@ -333,7 +336,7 @@ function analyze() {
       <td class="time-cell">${formatTime(r.time)}</td>
       <td>
         <div class="score-bar-wrap">
-          <span class="score-cell ${cls.text}">${r.score}</span>
+          <span class="score-cell ${cls.text}">${formattedScore}</span>
           <div class="score-bar">
             <div class="score-bar-fill ${cls.bar}" style="width: ${r.score}%"></div>
           </div>
