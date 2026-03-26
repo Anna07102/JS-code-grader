@@ -69,6 +69,7 @@ header h1 {
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #fff;
+  flex-shrink: 0; 
 }
 
 .subtitle {
@@ -80,6 +81,7 @@ header h1 {
   padding: 0.3rem 0.8rem;
   border-radius: 20px;
   background: var(--surface);
+  text-align: center;
 }
 
 main {
